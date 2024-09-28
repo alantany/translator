@@ -1,6 +1,5 @@
 import streamlit as st
 from googletrans import Translator, LANGUAGES
-import pyperclip
 import requests
 from bs4 import BeautifulSoup
 import docx2txt
@@ -49,6 +48,16 @@ def translate_callback():
         st.session_state.translated_text = translated_text
         st.session_state.detected_lang = detected_lang
 
+def clear_input():
+    st.session_state.input_text = ""
+    st.session_state.translated_text = ""
+
+def swap_languages():
+    st.session_state.source_lang, st.session_state.target_lang = st.session_state.target_lang, st.session_state.source_lang
+    st.session_state.source_lang_code, st.session_state.target_lang_code = st.session_state.target_lang_code, st.session_state.source_lang_code
+    if st.session_state.input_text:
+        st.session_state.input_text, st.session_state.translated_text = st.session_state.translated_text, st.session_state.input_text
+
 st.set_page_config(layout="wide", page_title="多功能翻译工具")
 st.title("多功能翻译工具")
 
@@ -59,24 +68,23 @@ with tab1:
     col1, col2 = st.columns(2)
 
     with col1:
-        source_lang = st.selectbox("源语言:", ["自动检测"] + list(MENU_LANGUAGES.values()), key="source_lang")
+        if 'source_lang' not in st.session_state:
+            st.session_state.source_lang = 'English'
+            st.session_state.source_lang_code = 'en'
+        
+        source_lang = st.selectbox("源语言:", ["自动检测"] + list(MENU_LANGUAGES.values()), key="source_lang", index=2)  # 默认选择英语
         st.session_state.source_lang_code = "auto" if source_lang == "自动检测" else get_language_code(source_lang)
         
         st.text_area("在此输入文本", height=200, key="input_text", on_change=translate_callback)
         
-        col1_1, col1_2 = st.columns(2)
-        with col1_1:
-            if st.button("清空"):
-                st.session_state.input_text = ""
-                st.session_state.translated_text = ""
-                st.experimental_rerun()
-        with col1_2:
-            if st.button("复制"):
-                pyperclip.copy(st.session_state.input_text)
-                st.success("已复制到剪贴板")
+        st.button("清空", on_click=clear_input)
 
     with col2:
-        target_lang = st.selectbox("目标语言:", list(MENU_LANGUAGES.values()), key="target_lang")
+        if 'target_lang' not in st.session_state:
+            st.session_state.target_lang = '中文（简体）'
+            st.session_state.target_lang_code = 'zh-cn'
+        
+        target_lang = st.selectbox("目标语言:", list(MENU_LANGUAGES.values()), key="target_lang", index=0)  # 默认选择中文
         st.session_state.target_lang_code = get_language_code(target_lang)
         
         if 'translated_text' not in st.session_state:
@@ -87,9 +95,7 @@ with tab1:
         with col2_1:
             st.button("翻译", on_click=translate_callback)
         with col2_2:
-            if st.button("复制翻译结果"):
-                pyperclip.copy(st.session_state.translated_text)
-                st.success("已复制到剪贴板")
+            st.button("转换", on_click=swap_languages)
 
     if st.session_state.translated_text and 'detected_lang' in st.session_state:
         detected_lang_name = get_language_name(st.session_state.detected_lang)
